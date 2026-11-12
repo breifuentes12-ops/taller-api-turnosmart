@@ -1,0 +1,31 @@
+@base = http://localhost:8080
+
+### Endpoint 1 - Trazabilidad: JOIN + funciones escalares
+GET {{base}}/api/atenciones
+
+### Endpoint 2 - Métricas por servicio: JOIN 3 tablas + agregación + HAVING
+GET {{base}}/api/metricas/servicios
+
+### Endpoint 3 - Ranking: funciones ventana
+GET {{base}}/api/ranking/atenciones
+
+### Endpoint 4 - Auditoría: función UDF
+GET {{base}}/api/auditoria/atenciones
+
+### Endpoint 5 - Reporte sin filtros
+GET {{base}}/api/reporte
+
+### Endpoint 5 - Reporte con todos los filtros
+GET {{base}}/api/reporte?servicio=4&estado=Atendido&desde=2026-10-05&hasta=2026-10-07
+
+### Error 400 - parámetro no numérico
+GET {{base}}/api/reporte?servicio=abc
+
+### Error 400 - intento de inyección SQL
+GET {{base}}/api/reporte?servicio=1 OR 1=1
+
+### Error 404 - servicio que no existe
+GET {{base}}/api/reporte?servicio=99
+
+### Error 404 - ruta que no existe
+GET {{base}}/api/otra
