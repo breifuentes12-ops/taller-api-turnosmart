@@ -8,42 +8,24 @@ Para correr el proyecto: `docker compose up -d --build`. La API queda en `http:/
 
 | Rol | Tabla | Por qué |
 |---|---|---|
-| Catálogo | `servicio` | Agrupa todo: cada turno y cada empleado pertenece a un servicio. |
-| Recurso | `empleado` | Son los que atienden los turnos dentro de cada servicio. |
+| Catálogo | `servicio` | Agrupa todo: cada turno y cada atención pertenece a un servicio. |
+| Recurso | `ventanilla` | Es el puesto físico donde se atiende cada turno. |
 | Transaccional | `atencion` y `turno` | Guardan cada turno y su atención, con fecha, hora de inicio y hora de fin. |
-| Actor | `usuario` | Las personas que piden los turnos. |
+| Actor | `usuario` y `empleado` | El usuario pide el turno y el empleado lo atiende. |
 
 ## Endpoints
 
 ### 1. `/api/atenciones`
-Muestra cada atención con sus datos listos para leer.
-- Une atención, turno, servicio y usuario con `INNER JOIN`.
-- Pone el nombre en mayúsculas (`UPPER`, `CONCAT`).
-- Muestra el año y mes, y cuántos días han pasado (`DATE_FORMAT`, `DATEDIFF`).
-- Calcula cuántos minutos se pasó o le sobraron frente al tiempo estimado.
+Muestra cada atención con sus datos listos para leer. Junta la atención con su turno, su servicio y el usuario, pone el nombre en mayúsculas, muestra el mes y los días que han pasado, y calcula cuántos minutos se pasó o le sobraron frente al tiempo estimado.
 
 ### 2. `/api/metricas/servicios`
-Dice cómo le fue a cada servicio.
-- Une atención, turno y servicio, y agrupa por servicio (`GROUP BY`).
-- Cuenta las atenciones y saca el total, el promedio, el máximo y el mínimo de minutos (`COUNT`, `SUM`, `AVG`, `MAX`, `MIN`).
-- Solo muestra los servicios con 2 atenciones o más (`HAVING`).
+Dice cómo le fue a cada servicio. Agrupa las atenciones por servicio y saca cuántas hubo, el total de minutos, el promedio, la más larga y la más corta. Solo muestra los servicios que tienen 2 atenciones o más.
 
 ### 3. `/api/ranking/atenciones`
-Compara cada atención con las demás de su mismo servicio, sin perder ninguna fila.
-- `DENSE_RANK`: el puesto de la atención dentro de su servicio, de la más larga a la más corta.
-- `SUM ... OVER`: los minutos acumulados del servicio a lo largo de los días.
-- El porcentaje que representa cada atención en el total de su servicio.
+Muestra cómo trabaja cada ventanilla sin juntar las filas: cada fila es una atención. Le da a cada atención un puesto dentro de su servicio, suma los minutos que va acumulando cada ventanilla día a día y muestra qué porcentaje del servicio representa esa atención. Usa funciones ventana (`DENSE_RANK` y `SUM ... OVER`).
 
 ### 4. `/api/auditoria/atenciones`
-Revisa si cada atención se hizo en el tiempo esperado.
-- Usa la función `fn_clasificar_atencion`, que está en `init.sql`.
-- Recibe lo que duró la atención y lo que debía durar, y responde: Rápida, A tiempo, Demorada, Crítica o En curso.
+Revisa si cada atención se hizo en el tiempo esperado. Usa la función `fn_clasificar_atencion`, guardada en `init.sql`, que compara lo que duró la atención con lo que debía durar y responde Rápida, A tiempo, Demorada, Crítica o En curso.
 
 ### 5. `/api/reporte`
-Reporte de turnos que se puede filtrar por servicio, estado y fechas. Los filtros son opcionales.
-- Agrupa por servicio y estado, y cuenta turnos, usuarios y prioritarios.
-- Los filtros se pasan con `?` en el `PreparedStatement`, así no hay inyección SQL.
-- Si un dato está mal responde 400, y si el servicio no existe responde 404.
-
-
-
+Reporte de turnos que se puede filtrar por servicio, estado y fechas, aunque ningún filtro es obligatorio. Por ejemplo: `/api/reporte?servicio=4&estado=Atendido`. Los filtros se envían de forma segura con `?`, así que no hay inyección SQL. Si un dato viene mal responde 400, y si el servicio no existe responde 404.

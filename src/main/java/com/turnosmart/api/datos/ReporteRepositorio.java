@@ -10,7 +10,7 @@ import java.sql.Types;
 import java.util.List;
 import java.util.Map;
 
-// Capa de acceso a datos: SQL nativo con PreparedStatement
+//SQL nativo con PreparedStatement
 public class ReporteRepositorio {
 
     // Endpoint 1: INNER JOIN + funciones escalares
@@ -54,31 +54,35 @@ public class ReporteRepositorio {
         return consultar(sql);
     }
 
-    // Endpoint 3: INNER JOIN + funciones ventana
+    // Endpoint 3: INNER JOIN + funciones ventana (Recurso = ventanilla)
     public List<Map<String, Object>> rankingAtenciones() throws SQLException {
         String sql = """
             WITH base AS (
                 SELECT s.id_servicio,
                        s.nombre AS servicio,
+                       v.id_ventanilla,
+                       v.numero AS ventanilla,
                        CONCAT(ue.nombre, ' ', ue.apellido) AS empleado,
                        t.numero_turno,
                        t.fecha,
                        a.hora_inicio,
                        TIMESTAMPDIFF(MINUTE, a.hora_inicio, a.hora_fin) AS duracion_min
                 FROM atencion a
-                INNER JOIN turno t     ON t.id_turno = a.id_turno
-                INNER JOIN servicio s  ON s.id_servicio = t.id_servicio
-                INNER JOIN empleado e  ON e.id_empleado = a.id_empleado
-                INNER JOIN usuario ue  ON ue.id_usuario = e.id_usuario
+                INNER JOIN turno t      ON t.id_turno = a.id_turno
+                INNER JOIN servicio s   ON s.id_servicio = t.id_servicio
+                INNER JOIN ventanilla v ON v.id_ventanilla = a.id_ventanilla
+                INNER JOIN empleado e   ON e.id_empleado = a.id_empleado
+                INNER JOIN usuario ue   ON ue.id_usuario = e.id_usuario
                 WHERE a.hora_fin IS NOT NULL
             )
             SELECT servicio,
+                   ventanilla,
                    empleado,
                    numero_turno,
                    fecha,
                    duracion_min,
                    DENSE_RANK() OVER (PARTITION BY id_servicio ORDER BY duracion_min DESC) AS ranking,
-                   SUM(duracion_min) OVER (PARTITION BY id_servicio ORDER BY fecha, hora_inicio) AS minutos_acumulados,
+                   SUM(duracion_min) OVER (PARTITION BY id_ventanilla ORDER BY fecha, hora_inicio) AS minutos_acumulados_ventanilla,
                    ROUND(duracion_min * 100 / SUM(duracion_min) OVER (PARTITION BY id_servicio), 1) AS porcentaje_servicio
             FROM base
             ORDER BY servicio, ranking
